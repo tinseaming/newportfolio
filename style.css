@@ -452,8 +452,8 @@ header.scrolled {
     box-shadow: var(--shadow-card);
 }
 
-.social-icon.whatsapp:hover {
-    background: #25d366;
+.social-icon.facebook:hover {
+    background: #2e04eb;
     color: white;
 }
 
