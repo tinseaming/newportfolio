@@ -2212,3 +2212,625 @@ html[data-theme="light"] .skill-bar {
     .card-2 { bottom: 30%; left: -3%; }
     .card-3 { bottom: 8%; right: -3%; }
 }
+
+/* ==========================================================
+   Header refinements
+   ========================================================== */
+a.nav-brand {
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* One clean glass layer, no heavy shadow band under the bar */
+header::before {
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Once the page scrolls, make the bar more solid so text stays readable over photos */
+header.scrolled::before {
+    background-color: rgba(12, 14, 20, 0.66);
+}
+
+html[data-theme="light"] header.scrolled::before {
+    background-color: rgba(255, 255, 255, 0.76);
+}
+
+.nav-link {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+html[data-theme="light"] .nav-link {
+    color: #3b4a63;
+}
+
+.nav-link:hover,
+.nav-link.active,
+html[data-theme="light"] .nav-link:hover {
+    color: var(--text-primary);
+}
+
+.nav-link.active {
+    color: var(--on-accent);
+}
+
+/* Desktop: the menu pill hugs its links and is centered on the page */
+@media (min-width: 1025px) {
+    .navbar {
+        grid-template-columns: 1fr auto 1fr;
+    }
+
+    .nav-cta {
+        justify-self: end;
+    }
+
+    .nav-menu {
+        justify-self: center;
+        width: max-content;
+        background-color: rgba(255, 255, 255, 0.07);
+        background-image: none;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+
+    html[data-theme="light"] .nav-menu {
+        background-color: rgba(255, 255, 255, 0.62);
+        border-color: rgba(255, 255, 255, 0.95);
+        box-shadow: inset 0 1px 0 #ffffff, 0 4px 16px rgba(31, 45, 61, 0.08);
+    }
+}
+
+/* Logo is only as wide as its text, so the clickable area isn't a giant empty bar */
+.nav-brand {
+    justify-self: start;
+}
+
+/* ==========================================================
+   3D experience
+   ========================================================== */
+#bg3d {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100lvh;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 1.4s ease;
+}
+
+html.scene-ready #bg3d {
+    opacity: 1;
+}
+
+/* --- depth reveal on scroll --- */
+html.fx .reveal {
+    opacity: 0;
+    transform: perspective(1100px) translate3d(0, 48px, -120px) rotateX(14deg);
+    transition:
+        opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1) var(--rd, 0s),
+        transform 1.1s cubic-bezier(0.16, 1, 0.3, 1) var(--rd, 0s);
+    will-change: transform, opacity;
+}
+
+html.fx .reveal.in {
+    opacity: 1;
+    transform: perspective(1100px) translate3d(0, 0, 0) rotateX(0deg);
+}
+
+/* skill bars fill up when their card appears */
+html.fx .skill-fill {
+    transform-origin: left center;
+    transition: transform 1.3s cubic-bezier(0.16, 1, 0.3, 1) 0.35s;
+}
+
+html.fx .skill-category:not(.revealed) .skill-fill {
+    transform: scaleX(0);
+}
+
+/* --- tilt + glare (mouse only; class is added by JS) --- */
+html.fx .tilt,
+html.fx .tilt:hover {
+    --rx: 0deg;
+    --ry: 0deg;
+    --ty: 0px;
+    --sc: 1;
+    position: relative;
+    transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry)) translate3d(0, var(--ty), 0) scale(var(--sc));
+    transition:
+        transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+        box-shadow 0.4s ease,
+        background-color 0.4s ease,
+        border-color 0.4s ease;
+}
+
+html.fx .tilt.is-tilting,
+html.fx .tilt.is-tilting:hover {
+    transition:
+        transform 0.14s ease-out,
+        box-shadow 0.4s ease,
+        background-color 0.4s ease;
+}
+
+/* reveal must win over tilt while a card is still arriving */
+html.fx .reveal,
+html.fx .reveal:hover {
+    transform: perspective(1100px) translate3d(0, 48px, -120px) rotateX(14deg);
+}
+
+html.fx .reveal.in,
+html.fx .reveal.in:hover {
+    transform: perspective(1100px) translate3d(0, 0, 0) rotateX(0deg);
+}
+
+.tilt-glare {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.22), transparent 55%);
+}
+
+html.fx .tilt.is-tilting > .tilt-glare {
+    opacity: 1;
+}
+
+html[data-theme="light"] .tilt-glare {
+    background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.7), transparent 55%);
+}
+
+/* hero labels drift with the mouse (uses the separate `translate` property so the float animation keeps working) */
+html.fx .floating-card {
+    transition: translate 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+html.fx .home-content {
+    will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.fx .reveal,
+    html.fx .reveal.in {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+
+    .floating-card {
+        animation: none;
+    }
+}
+
+/* ==========================================================
+   Galaxy background
+   ========================================================== */
+:root {
+    --space-base: linear-gradient(180deg, #0d0a26 0%, #070516 55%, #03020a 100%);
+    --orb-1: rgba(109, 60, 255, 0.30);
+    --orb-2: rgba(255, 61, 154, 0.16);
+    --orb-3: rgba(45, 123, 255, 0.22);
+}
+
+html[data-theme="light"] {
+    --space-base: linear-gradient(180deg, #eef3ff 0%, #f4f0ff 55%, #fdf2f8 100%);
+    --orb-1: rgba(0, 170, 220, 0.30);
+    --orb-2: rgba(140, 110, 255, 0.24);
+    --orb-3: rgba(255, 120, 180, 0.20);
+}
+
+body::before {
+    background:
+        radial-gradient(45vmax 45vmax at 12% 8%, var(--orb-1), transparent 62%),
+        radial-gradient(40vmax 40vmax at 92% 38%, var(--orb-2), transparent 62%),
+        radial-gradient(45vmax 45vmax at 28% 98%, var(--orb-3), transparent 62%),
+        var(--space-base);
+}
+
+/* Fallback stars (pure CSS) while the 3D scene loads, or if WebGL is unavailable */
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+        radial-gradient(1px 1px at 20px 30px, #ffffff, transparent),
+        radial-gradient(1.5px 1.5px at 90px 120px, #cfe0ff, transparent),
+        radial-gradient(1px 1px at 160px 70px, #ffffff, transparent),
+        radial-gradient(1px 1px at 230px 190px, #ffd6ec, transparent),
+        radial-gradient(1.5px 1.5px at 60px 220px, #ffffff, transparent),
+        radial-gradient(1px 1px at 200px 250px, #aec8ff, transparent);
+    background-size: 260px 260px;
+    opacity: 0.6;
+    transition: opacity 1.4s ease;
+}
+
+html:not(.scene-ready) body::after {
+    animation: starTwinkle 4s ease-in-out infinite alternate;
+}
+
+html.scene-ready body::after,
+html[data-theme="light"] body::after {
+    opacity: 0;
+}
+
+@keyframes starTwinkle {
+    from { opacity: 0.35; }
+    to { opacity: 0.8; }
+}
+
+/* Readability over the galaxy (dark mode): frosted dark glass + soft halos behind text */
+:root {
+    --lg-tint: rgba(14, 10, 38, 0.42);
+}
+
+html[data-theme="light"] {
+    --lg-tint: rgba(255, 255, 255, 0.42);
+}
+
+html:not([data-theme="light"]) .section-title {
+    filter: drop-shadow(0 2px 14px rgba(4, 2, 16, 0.75));
+}
+
+html:not([data-theme="light"]) .hero-desc,
+html:not([data-theme="light"]) .about-text p,
+html:not([data-theme="light"]) .contact-details p {
+    color: #cfd3e4;
+    text-shadow: 0 1px 10px rgba(4, 2, 16, 0.9);
+}
+
+/* ==========================================================
+   Space-portal look: purple galaxy palette, black-hole glow,
+   orbiting tech icons, pill badge, glassy purple buttons
+   ========================================================== */
+:root {
+    --accent-primary: #a78bfa;
+    --accent-secondary: #60a5fa;
+    --accent-gradient: linear-gradient(135deg, #7c4dff 0%, #2b8fd6 100%);
+    --accent-gradient-hover: linear-gradient(135deg, #6a3df0 0%, #2480c4 100%);
+    --border-accent: rgba(167, 139, 250, 0.2);
+    --shadow-glow: 0 0 60px rgba(124, 77, 255, 0.2);
+    --on-accent: #ffffff;
+}
+
+/* --- black hole / portal at the top of the hero --- */
+.hero-portal {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.portal-glow {
+    position: absolute;
+    left: 50%;
+    top: -80px;
+    width: min(1100px, 130vw);
+    height: 420px;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse at 50% 28%, rgba(167, 139, 250, 0.55) 0%, rgba(109, 40, 217, 0.28) 32%, transparent 68%);
+    filter: blur(10px);
+    animation: portalPulse 6s ease-in-out infinite;
+}
+
+.portal-streak {
+    position: absolute;
+    left: 6%;
+    right: 6%;
+    top: 92px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, rgba(167, 139, 250, 0.2) 8%, #c4b5fd 36%, #ffffff 50%, #c4b5fd 64%, rgba(167, 139, 250, 0.2) 92%, transparent 100%);
+    box-shadow: 0 0 18px 3px rgba(167, 139, 250, 0.55);
+    opacity: 0.85;
+}
+
+.portal-disc {
+    position: absolute;
+    left: 50%;
+    top: -70px;
+    width: clamp(180px, 21vw, 270px);
+    aspect-ratio: 1;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 38%, #02010a 58%, #1a0b45 82%, #5b2fd0 100%);
+    box-shadow:
+        inset 0 -14px 34px rgba(167, 139, 250, 0.55),
+        0 0 0 2px rgba(255, 255, 255, 0.95),
+        0 0 24px 6px rgba(196, 181, 253, 0.9),
+        0 0 70px 24px rgba(124, 77, 255, 0.6),
+        0 0 140px 50px rgba(88, 28, 200, 0.35);
+}
+
+/* bright spot that travels around the rim */
+.portal-disc::before {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, rgba(255, 255, 255, 0) 0%, #ffffff 14%, rgba(255, 255, 255, 0) 32%, rgba(196, 181, 253, 0) 60%, #c4b5fd 78%, rgba(255, 255, 255, 0) 100%);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+    animation: orbitSpin 9s linear infinite;
+}
+
+/* faint grid fading out from the portal */
+.hero-portal::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 720px;
+    background-image:
+        linear-gradient(rgba(167, 139, 250, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(167, 139, 250, 0.07) 1px, transparent 1px);
+    background-size: 72px 72px;
+    -webkit-mask-image: radial-gradient(ellipse at 50% 10%, #000 0%, transparent 68%);
+    mask-image: radial-gradient(ellipse at 50% 10%, #000 0%, transparent 68%);
+}
+
+@keyframes portalPulse {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; }
+}
+
+@keyframes orbitSpin {
+    to { transform: rotate(360deg); }
+}
+
+html[data-theme="light"] .portal-disc,
+html[data-theme="light"] .portal-streak {
+    display: none;
+}
+
+html[data-theme="light"] .portal-glow {
+    background: radial-gradient(ellipse at 50% 28%, rgba(167, 139, 250, 0.35) 0%, rgba(147, 197, 253, 0.2) 40%, transparent 70%);
+}
+
+html[data-theme="light"] .hero-portal::after {
+    background-image:
+        linear-gradient(rgba(124, 77, 255, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124, 77, 255, 0.07) 1px, transparent 1px);
+}
+
+/* --- orbiting tech icons: tilted rings like Saturn's rings.
+       The back half passes behind the photo, the front half in front of it. --- */
+.orbit {
+    --orbit: clamp(320px, 42vw, 620px);
+    --isz: clamp(38px, 4vw, 56px);
+    --tilt: 62deg;
+    position: absolute;
+    left: 50%;
+    top: 58%;
+    width: var(--orbit);
+    height: var(--orbit);
+    margin: calc(var(--orbit) / -2) 0 0 calc(var(--orbit) / -2);
+    pointer-events: none;
+    perspective: 1100px;
+    transform: rotateX(calc(var(--oy, 0) * -6deg)) rotateY(calc(var(--ox, 0) * 6deg));
+    transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.orbit-back {
+    z-index: 1;
+    clip-path: inset(0 -50% 50% -50%);
+}
+
+.orbit-front {
+    z-index: 3;
+    clip-path: inset(50% -50% 0 -50%);
+}
+
+.orbit-plane {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    transform: rotateX(var(--tilt));
+}
+
+/* glowing grid "floor" in the ring plane */
+.orbit-plane::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background-image:
+        linear-gradient(rgba(167, 139, 250, 0.16) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(167, 139, 250, 0.16) 1px, transparent 1px);
+    background-size: 44px 44px;
+    background-position: center;
+    -webkit-mask-image: radial-gradient(circle, #000 28%, transparent 72%);
+    mask-image: radial-gradient(circle, #000 28%, transparent 72%);
+}
+
+.orbit-circle {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    border-radius: 50%;
+    border: 1px solid rgba(167, 139, 250, 0.4);
+    transform: translate(-50%, -50%);
+}
+
+.orbit-circle.c1 { width: 44%; height: 44%; }
+.orbit-circle.c2 { width: 72%; height: 72%; border-color: rgba(167, 139, 250, 0.34); }
+.orbit-circle.c3 { width: 94%; height: 94%; border-color: rgba(96, 165, 250, 0.3); }
+
+.orbit-ring {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    animation: orbitSpin var(--dur) linear infinite var(--dir, normal);
+}
+
+.ring-a { --rr: 0.36; --dur: 42s; --dir: normal; --dir-inv: normal; }
+.ring-b { --rr: 0.47; --dur: 64s; --dir: reverse; --dir-inv: reverse; }
+
+.orbit-item {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: var(--isz);
+    height: var(--isz);
+    margin: calc(var(--isz) / -2) 0 0 calc(var(--isz) / -2);
+    transform-style: preserve-3d;
+    transform: rotate(var(--a)) translateX(calc(var(--orbit) * var(--rr))) rotate(calc(var(--a) * -1));
+}
+
+/* each icon spins back and stands up, so it always faces the viewer */
+.orbit-item > span {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    border-radius: 16px;
+    background: rgba(26, 16, 64, 0.82);
+    border: 1px solid rgba(167, 139, 250, 0.45);
+    color: #ece7ff;
+    font-size: calc(var(--isz) * 0.46);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 18px rgba(124, 77, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    animation: orbitFace var(--dur) linear infinite var(--dir-inv, reverse);
+}
+
+@keyframes orbitFace {
+    from { transform: rotateZ(0deg) rotateX(calc(var(--tilt) * -1)); }
+    to { transform: rotateZ(-360deg) rotateX(calc(var(--tilt) * -1)); }
+}
+
+html[data-theme="light"] .orbit-item > span {
+    background: rgba(255, 255, 255, 0.9);
+    color: #5b3fd0;
+    border-color: rgba(124, 77, 255, 0.32);
+    box-shadow: 0 8px 22px rgba(60, 40, 140, 0.16), inset 0 1px 0 #ffffff;
+}
+
+html[data-theme="light"] .orbit-circle {
+    border-color: rgba(124, 77, 255, 0.3);
+}
+
+html[data-theme="light"] .orbit-plane::before {
+    background-image:
+        linear-gradient(rgba(124, 77, 255, 0.13) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124, 77, 255, 0.13) 1px, transparent 1px);
+}
+
+.image-container .profile-image {
+    position: relative;
+    z-index: 2;
+}
+
+.floating-card {
+    z-index: 3;
+}
+
+@media (max-width: 1024px) {
+    .orbit {
+        --orbit: min(92vw, 560px);
+        --isz: clamp(34px, 9vw, 52px);
+    }
+
+    .ring-a { --rr: 0.33; }
+    .ring-b { --rr: 0.41; }
+
+    .home-image {
+        margin-block: 1.5rem;
+    }
+}
+
+/* --- pill badge above the name --- */
+.greeting {
+    display: inline-flex;
+    align-self: flex-start;
+    padding: 0.45rem 1.05rem;
+    border: 1px solid rgba(167, 139, 250, 0.38);
+    background: rgba(124, 77, 255, 0.14);
+    border-radius: 999px;
+    box-shadow: 0 0 24px rgba(124, 77, 255, 0.2);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+
+.greeting h3 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+html[data-theme="light"] .greeting {
+    background: rgba(255, 255, 255, 0.65);
+    border-color: rgba(124, 77, 255, 0.28);
+    box-shadow: 0 4px 18px rgba(80, 50, 160, 0.1);
+}
+
+@media (max-width: 1024px) {
+    .greeting {
+        align-self: center;
+    }
+}
+
+/* --- glassy purple buttons (dark mode) --- */
+html:not([data-theme="light"]) .hire-btn.primary,
+html:not([data-theme="light"]) .cta-btn,
+html:not([data-theme="light"]) .submit-btn {
+    background: linear-gradient(135deg, rgba(124, 77, 255, 0.55), rgba(60, 40, 170, 0.55));
+    border: 1px solid rgba(167, 139, 250, 0.55);
+    color: #ffffff;
+    box-shadow: 0 0 26px rgba(124, 77, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+}
+
+html:not([data-theme="light"]) .hire-btn.primary:hover,
+html:not([data-theme="light"]) .cta-btn:hover,
+html:not([data-theme="light"]) .submit-btn:hover {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.8), rgba(79, 55, 210, 0.8));
+    box-shadow: 0 0 38px rgba(124, 77, 255, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+html:not([data-theme="light"]) .nav-link.active {
+    background: linear-gradient(135deg, rgba(124, 77, 255, 0.5), rgba(60, 40, 170, 0.5));
+    border: 1px solid rgba(167, 139, 250, 0.45);
+    color: #ffffff;
+    box-shadow: 0 0 18px rgba(124, 77, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+html:not([data-theme="light"]) .about-btn {
+    border-color: rgba(167, 139, 250, 0.5);
+    color: #e9e3ff;
+}
+
+html:not([data-theme="light"]) .about-btn:hover,
+html:not([data-theme="light"]) .project-link:hover {
+    background: var(--accent-gradient);
+    border-color: transparent;
+    color: #ffffff;
+}
+
+html:not([data-theme="light"]) .service-features span,
+html:not([data-theme="light"]) .project-tech span {
+    background: rgba(139, 92, 246, 0.16);
+    border-color: rgba(167, 139, 250, 0.25);
+    color: #c4b5fd;
+}
+
+html:not([data-theme="light"]) .skill-fill {
+    box-shadow: 0 0 12px rgba(124, 77, 255, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .orbit-ring,
+    .orbit-item > span,
+    .portal-glow,
+    .portal-disc::before {
+        animation: none;
+    }
+}

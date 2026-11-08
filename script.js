@@ -382,6 +382,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Logo scrolls back to the top
+    document.querySelector('.nav-brand')?.addEventListener('click', event => {
+        event.preventDefault();
+        scrollToSection('#home');
+    });
+
     // Placeholder links (href="#") should not jump to the top of the page
     document.querySelectorAll('a[href="#"]').forEach(link => {
         link.addEventListener('click', event => event.preventDefault());
@@ -421,8 +427,7 @@ document.addEventListener('DOMContentLoaded', function() {
             typeWriter();
         }
         
-        // Setup animations
-        setupAnimations();
+        // (scroll animations are handled by fx3d.js)
         
         // Initialize navigation
         initializeActiveNav();

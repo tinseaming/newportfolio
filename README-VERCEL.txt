@@ -15,3 +15,17 @@ Do not upload `node_modules` or `.git`.
 The "Download CV" buttons download `cv/Tin_SeaMing_CV.pdf`. The file included is a simple
 starter CV built from the text on this website. Replace it with your real CV and keep the
 same file name (`cv/Tin_SeaMing_CV.pdf`) and the buttons will keep working.
+
+## 3D galaxy background
+- `scene3d.js` draws the galaxy (Three.js is included offline in `vendor/three.min.js`, MIT license):
+  spiral galaxies, twinkling stars, nebula clouds, planets and shooting stars.
+- `fx3d.js` adds the 3D scroll reveal, card tilt and hero depth effects.
+- Dark mode = deep-space galaxy. Light mode = soft pastel galaxy.
+- The scene turns itself off on very low-power devices or when WebGL is unavailable
+  (a CSS star background is shown instead). "Reduce motion" users get a still scene.
+
+## Space-portal hero
+- The glowing black hole at the top is pure CSS (`.hero-portal` in `style.css`).
+- The orbiting tech icons are in `index.html` inside `.image-container` (two copies: `.orbit-back` behind the photo,
+  `.orbit-front` in front). To change an icon, edit the `<i class="fab fa-...">` in BOTH copies.
+- Colours: change `--accent-primary` / `--accent-gradient` in the "Space-portal look" block at the end of `style.css`.

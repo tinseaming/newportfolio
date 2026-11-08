@@ -28,9 +28,10 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <canvas id="bg3d" aria-hidden="true"></canvas>
     <header>
       <nav class="navbar">
-        <div class="nav-brand">MY WEB<span class="brand-dot">.</span></div>
+        <a href="#home" class="nav-brand" data-scroll-to="#home" aria-label="Back to top">MY WEB<span class="brand-dot">.</span></a>
         <ul class="nav-menu" id="navMenu">
           <li><a href="#home" class="nav-link active">Home</a></li>
           <li><a href="#about" class="nav-link">About</a></li>
@@ -68,6 +69,11 @@
     <!-- Home Page -->
     <main>
       <section id="home" class="section home">
+        <div class="hero-portal" aria-hidden="true">
+          <span class="portal-glow"></span>
+          <span class="portal-streak"></span>
+          <span class="portal-disc"></span>
+        </div>
         <div class="container">
           <div class="home-content">
             <div class="home-text">
@@ -156,11 +162,55 @@
 
             <div class="home-image">
               <div class="image-container">
+                <div class="orbit orbit-back" aria-hidden="true">
+                  <div class="orbit-plane">
+                    <span class="orbit-circle c1"></span>
+                    <span class="orbit-circle c2"></span>
+                    <span class="orbit-circle c3"></span>
+                    <div class="orbit-ring ring-a">
+                      <div class="orbit-item" style="--a: 10deg"><span><i class="fab fa-react"></i></span></div>
+                      <div class="orbit-item" style="--a: 82deg"><span><i class="fab fa-js"></i></span></div>
+                      <div class="orbit-item" style="--a: 154deg"><span><i class="fab fa-html5"></i></span></div>
+                      <div class="orbit-item" style="--a: 226deg"><span><i class="fab fa-css3-alt"></i></span></div>
+                      <div class="orbit-item" style="--a: 298deg"><span><i class="fab fa-node-js"></i></span></div>
+                    </div>
+                    <div class="orbit-ring ring-b">
+                      <div class="orbit-item" style="--a: 30deg"><span><i class="fab fa-python"></i></span></div>
+                      <div class="orbit-item" style="--a: 90deg"><span><i class="fab fa-git-alt"></i></span></div>
+                      <div class="orbit-item" style="--a: 150deg"><span><i class="fab fa-github"></i></span></div>
+                      <div class="orbit-item" style="--a: 210deg"><span><i class="fab fa-docker"></i></span></div>
+                      <div class="orbit-item" style="--a: 270deg"><span><i class="fab fa-figma"></i></span></div>
+                      <div class="orbit-item" style="--a: 330deg"><span><i class="fas fa-database"></i></span></div>
+                    </div>
+                  </div>
+                </div>
                 <img
                   src="DSC_3436 copy.jpg"
                   alt="Profile Image"
                   class="profile-image"
                 />
+                <div class="orbit orbit-front" aria-hidden="true">
+                  <div class="orbit-plane">
+                    <span class="orbit-circle c1"></span>
+                    <span class="orbit-circle c2"></span>
+                    <span class="orbit-circle c3"></span>
+                    <div class="orbit-ring ring-a">
+                      <div class="orbit-item" style="--a: 10deg"><span><i class="fab fa-react"></i></span></div>
+                      <div class="orbit-item" style="--a: 82deg"><span><i class="fab fa-js"></i></span></div>
+                      <div class="orbit-item" style="--a: 154deg"><span><i class="fab fa-html5"></i></span></div>
+                      <div class="orbit-item" style="--a: 226deg"><span><i class="fab fa-css3-alt"></i></span></div>
+                      <div class="orbit-item" style="--a: 298deg"><span><i class="fab fa-node-js"></i></span></div>
+                    </div>
+                    <div class="orbit-ring ring-b">
+                      <div class="orbit-item" style="--a: 30deg"><span><i class="fab fa-python"></i></span></div>
+                      <div class="orbit-item" style="--a: 90deg"><span><i class="fab fa-git-alt"></i></span></div>
+                      <div class="orbit-item" style="--a: 150deg"><span><i class="fab fa-github"></i></span></div>
+                      <div class="orbit-item" style="--a: 210deg"><span><i class="fab fa-docker"></i></span></div>
+                      <div class="orbit-item" style="--a: 270deg"><span><i class="fab fa-figma"></i></span></div>
+                      <div class="orbit-item" style="--a: 330deg"><span><i class="fas fa-database"></i></span></div>
+                    </div>
+                  </div>
+                </div>
                 <div class="floating-card card-1">
                   <i class="fas fa-code"></i>
                   <span>Clean Code</span>
@@ -809,5 +859,8 @@
     </main>
 
     <script src="script.js"></script>
+    <script src="vendor/three.min.js" defer></script>
+    <script src="scene3d.js" defer></script>
+    <script src="fx3d.js" defer></script>
   </body>
 </html>
