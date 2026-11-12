@@ -29,10 +29,13 @@
   </head>
   <body>
     <canvas id="bg3d" aria-hidden="true"></canvas>
+    <div class="cursor-glow" aria-hidden="true"></div>
+    <div class="scroll-progress" aria-hidden="true"><span></span></div>
     <header>
       <nav class="navbar">
         <a href="#home" class="nav-brand" data-scroll-to="#home" aria-label="Back to top">MY WEB<span class="brand-dot">.</span></a>
         <ul class="nav-menu" id="navMenu">
+          <li class="nav-indicator" aria-hidden="true"></li>
           <li><a href="#home" class="nav-link active">Home</a></li>
           <li><a href="#about" class="nav-link">About</a></li>
           <li><a href="#skills" class="nav-link">MySkills</a></li>
@@ -228,6 +231,38 @@
           </div>
         </div>
       </section>
+
+      <div class="tech-marquee" aria-label="Technologies I work with">
+        <div class="marquee-viewport">
+          <div class="marquee-track">
+            <div class="marquee-group">
+            <span class="marquee-item"><i class="fab fa-html5"></i>HTML</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fab fa-css3-alt"></i>CSS</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fab fa-js"></i>JavaScript</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fab fa-react"></i>React</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fab fa-node-js"></i>Node.js</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fab fa-python"></i>Python</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fas fa-database"></i>MySQL</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fab fa-git-alt"></i>Git</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fab fa-docker"></i>Docker</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fab fa-figma"></i>Figma</span><span class="marquee-sep">&#10022;</span>
+            </div>
+            <div class="marquee-group" aria-hidden="true">
+            <span class="marquee-item"><i class="fab fa-html5"></i>HTML</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fab fa-css3-alt"></i>CSS</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fab fa-js"></i>JavaScript</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fab fa-react"></i>React</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fab fa-node-js"></i>Node.js</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fab fa-python"></i>Python</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fas fa-database"></i>MySQL</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fab fa-git-alt"></i>Git</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fab fa-docker"></i>Docker</span><span class="marquee-sep">&#10022;</span>
+            <span class="marquee-item"><i class="fab fa-figma"></i>Figma</span><span class="marquee-sep">&#10022;</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- AboutMe Page -->
       <section id="about" class="section about">
         <div class="container">
@@ -247,6 +282,7 @@
             </div>
 
             <div class="about-text">
+              <span class="eyebrow">01 · About</span>
               <h2 class="section-title">About Me</h2>
               <div class="about-description">
                 <p>
@@ -315,7 +351,8 @@
       <!-- Skills Section -->
       <section id="skills" class="section skills">
         <div class="container">
-          <h2 class="section-title">Skills & Expertise</h2>
+          <span class="eyebrow">02 · Skills</span>
+              <h2 class="section-title">Skills & Expertise</h2>
           <div class="skills-content">
             <div class="skills-grid">
               <div class="skill-category">
@@ -323,14 +360,14 @@
                 <div class="skill-items">
                   <div class="skill-item">
                     <i class="fab fa-html5"></i>
-                    <span>HTML5</span>
+                    <span>HTML</span>
                     <div class="skill-bar">
                       <div class="skill-fill" style="width: 95%"></div>
                     </div>
                   </div>
                   <div class="skill-item">
                     <i class="fab fa-css3-alt"></i>
-                    <span>CSS3</span>
+                    <span>CSS</span>
                     <div class="skill-bar">
                       <div class="skill-fill" style="width: 90%"></div>
                     </div>
@@ -482,7 +519,8 @@
       <!-- Services Section -->
       <section id="service" class="section services">
         <div class="container">
-          <h2 class="section-title">What I Do</h2>
+          <span class="eyebrow">03 · Services</span>
+              <h2 class="section-title">What I Do</h2>
           <div class="services-content">
             <div class="services-grid">
               <div class="service-card">
@@ -589,7 +627,8 @@
       <!-- Projects Section -->
       <section id="project" class="section projects">
         <div class="container">
-          <h2 class="section-title">Featured Projects</h2>
+          <span class="eyebrow">04 · Projects</span>
+              <h2 class="section-title">Featured Projects</h2>
           <div class="projects-content">
             <div class="projects-grid">
               <div class="project-card">
@@ -775,7 +814,8 @@
       <!-- Contact Section -->
       <section id="contact" class="section contact">
         <div class="container">
-          <h2 class="section-title">Get In Touch</h2>
+          <span class="eyebrow">05 · Contact</span>
+              <h2 class="section-title">Get In Touch</h2>
           <div class="contact-content">
             <div class="contact-info">
               <div class="contact-item">
@@ -857,6 +897,34 @@
         </div>
       </section>
     </main>
+
+    <!-- <footer class="site-footer">
+      <div class="container">
+        <div class="footer-inner">
+          <div class="footer-brand">
+            <a href="#home" class="nav-brand footer-logo" data-fx-scroll="#home" aria-label="Back to top">MY WEB<span class="brand-dot">.</span></a>
+            <p>Building fast, beautiful and reliable software that combines logic and creativity.</p>
+          </div>
+          <nav class="footer-links" aria-label="Footer">
+            <a href="#about" data-fx-scroll="#about">About</a>
+            <a href="#skills" data-fx-scroll="#skills">Skills</a>
+            <a href="#service" data-fx-scroll="#service">Services</a>
+            <a href="#project" data-fx-scroll="#project">Projects</a>
+            <a href="#contact" data-fx-scroll="#contact">Contact</a>
+          </nav>
+          <div class="footer-social">
+            <a href="https://web.facebook.com/tinsea.ming" aria-label="FaceBook" class="social-icon facebook" > <i class="fab fa-facebook-f"></i> </a>
+            <a href="https://www.linkedin.com/in/tin-seaming-961b6b358/" aria-label="LinkedIn" class="social-icon linkedin" > <i class="fab fa-linkedin-in"></i> </a>
+            <a href="https://github.com/tinseaming" aria-label="GitHub" class="social-icon github" > <i class="fab fa-github"></i> </a>
+            <a href="https://www.instagram.com/tinsea_ming/" aria-label="Instagram" class="social-icon instagram" > <i class="fab fa-instagram"></i> </a>
+          </div>
+        </div>
+
+    </footer> -->
+
+    <button class="to-top" id="toTop" type="button" aria-label="Back to top">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+    </button>
 
     <script src="script.js"></script>
     <script src="vendor/three.min.js" defer></script>

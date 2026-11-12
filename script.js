@@ -52,7 +52,27 @@ document.addEventListener('DOMContentLoaded', function() {
     applyTheme(savedTheme);
     themeToggle?.addEventListener('click', () => {
         const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-        applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+        const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        // Smooth circular wipe from the button (View Transitions); plain fade as a fallback
+        if (document.startViewTransition && !reduceMotion) {
+            const rect = themeToggle.getBoundingClientRect();
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+            const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+            const transition = document.startViewTransition(() => applyTheme(nextTheme));
+            transition.ready.then(() => {
+                document.documentElement.animate(
+                    { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+                    { duration: 750, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', pseudoElement: '::view-transition-new(root)' }
+                );
+            }).catch(() => {});
+        } else {
+            document.documentElement.classList.add('theme-fade');
+            applyTheme(nextTheme);
+            setTimeout(() => document.documentElement.classList.remove('theme-fade'), 700);
+        }
     });
 
     // Professions for typewriter effect
@@ -128,6 +148,8 @@ document.addEventListener('DOMContentLoaded', function() {
         updateActiveNavLink(targetId);
         return true;
     }
+
+    window.__scrollToSection = scrollToSection;
 
     function smoothScroll(event) {
         event.preventDefault();

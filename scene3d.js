@@ -61,8 +61,11 @@
       float d = length(gl_PointCoord - 0.5);
       if (d > 0.5) discard;
       float a = pow(smoothstep(0.5, 0.0, d), 2.0) * vAlpha;
-      vec3 col = mix(vColor, vColor * vColor * 0.7, uLight);
-      gl_FragColor = vec4(col, a * 0.85);
+      // light mode: remap the warm/cool galaxy colours to a clean indigo -> magenta pastel duotone
+      float warm = clamp(vColor.r * 0.9 - vColor.b * 0.35 + 0.15, 0.0, 1.0);
+      vec3 lightCol = mix(vec3(0.30, 0.34, 0.88), vec3(0.88, 0.34, 0.70), warm);
+      vec3 col = mix(vColor, lightCol, uLight);
+      gl_FragColor = vec4(col, a * mix(0.85, 0.5, uLight));
     }`;
 
   const pointMaterials = [];
@@ -263,11 +266,19 @@
     });
     nebulaSprites.forEach((s) => {
       s.material.blending = light ? THREE.NormalBlending : THREE.AdditiveBlending;
-      s.material.opacity = light ? 0.2 : 0.26;
+      s.material.opacity = light ? 0.14 : 0.26;
     });
     coreSprites.forEach((s) => {
       s.material.blending = light ? THREE.NormalBlending : THREE.AdditiveBlending;
-      s.material.opacity = light ? 0.26 : 0.42;
+      s.material.opacity = light ? 0.16 : 0.42;
+    });
+    // pastel planets in light mode
+    planetMats.forEach((m) => {
+      if (!m.userData.base) m.userData.base = m.color.clone();
+      m.color.copy(m.userData.base);
+      if (light) m.color.lerp(new THREE.Color(0xffffff), 0.32);
+      m.emissive.copy(m.color);
+      m.emissiveIntensity = light ? 0.04 : 0.12;
     });
     ambient.intensity = light ? 0.9 : 0.45;
     shooters.forEach((m) => { if (light) m.visible = false; });
