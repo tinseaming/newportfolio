@@ -69,46 +69,95 @@
     }
 
     void main() {
-      float d = length(gl_PointCoord - 0.5);
-      if (d > 0.5) discard;
-      float a = pow(smoothstep(0.5, 0.0, d), 2.0) * vAlpha;
-      vec3 col = mix(vColor, vColor * vColor * 0.7, uLight);
-      gl_FragColor = vec4(col, a * 0.85);
+      vec2 uv = vUv;
+      vec2 p = vec2(uv.x * uAspect, uv.y);
+      float t = uTime;
+      p.x += uMouse.x * 0.06;
+
+      vec3 aur = vec3(0.0);
+      float inten = 0.0;
+      for (int i = 0; i < 3; i++) {
+        float fi = float(i);
+        float base = 0.50 + fi * 0.12 + 0.07 * sin(uScroll * 5.5 + fi * 1.7) + uMouse.y * 0.02 - uScroll * 0.08;
+        float h;
+        float c = curtain(p + vec2(fi * 3.1, 0.0), t * (1.0 + fi * 0.25), fi * 7.3 + 1.0, base, h);
+        vec3 col = pal(h + 0.18 * fi - 0.2 + sin(uScroll * 3.0 + fi) * 0.12, uLight);
+        float w = c * (1.0 - fi * 0.18);
+        aur += col * w;
+        inten += w;
+      }
+      aur *= 0.46;
+      inten *= 0.46;
+
+      /* fireflies */
+      vec3 fire = vec3(0.0);
+      for (int i = 0; i < 9; i++) {
+        float fi = float(i);
+        float sped = 0.015 + hash(vec2(fi, 1.0)) * 0.03;
+        vec2 fp = vec2(hash(vec2(fi, 2.0)) * uAspect, fract(hash(vec2(fi, 3.0)) + t * sped - uScroll * 0.1));
+        fp.x += sin(t * 0.4 + fi * 2.3) * 0.05;
+        vec2 d = uv * vec2(uAspect, 1.0) - fp;
+        float glow = 0.0007 / (dot(d, d) + 0.0007);
+        float blink = 0.5 + 0.5 * sin(t * 1.2 + fi * 4.0);
+        fire += glow * blink * mix(vec3(0.45, 1.0, 0.85), vec3(0.75, 0.65, 1.0), hash(vec2(fi, 4.0)));
+      }
+      fire *= 0.22;
+
+      /* night: additive light on the page background (premultiplied) */
+      vec3 rgbN = aur + fire;
+      float aN = clamp(max(rgbN.r, max(rgbN.g, rgbN.b)), 0.0, 1.0);
+      rgbN = min(rgbN, vec3(aN));
+
+      /* day: soft pastel wash + a few glowing dots */
+      float aL = clamp(inten * 0.95, 0.0, 0.72);
+      vec3 colL = aur / max(inten, 0.001);
+      float spark = clamp((fire.g + fire.b) * 0.3, 0.0, 0.5);
+      vec3 rgbL = colL * aL + vec3(0.56, 0.5, 0.92) * spark;
+      float aL2 = clamp(aL + spark, 0.0, 0.8);
+
+      gl_FragColor = mix(vec4(rgbN, aN), vec4(rgbL, aL2), uLight);
     }`;
 
-  const pointMaterials = [];
-  function makePointMaterial(sizeFactor, twinkle) {
-    const mat = new THREE.ShaderMaterial({
-      vertexShader: VERT,
-      fragmentShader: FRAG,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      uniforms: {
-        uTime: { value: 0 },
-        uSize: { value: sizeFactor },
-        uTwinkle: { value: twinkle },
-        uLight: { value: 0 }
-      }
-    });
-    mat.userData.sizeFactor = sizeFactor;
-    pointMaterials.push(mat);
-    return mat;
+  function compile(type, src) {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, src);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+      console.warn('Aurora shader error:', gl.getShaderInfoLog(sh));
+      return null;
+    }
+    return sh;
   }
 
-  function buildPoints(positions, colors, scales, phases, material) {
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    g.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
-    g.setAttribute('aScale', new THREE.BufferAttribute(scales, 1));
-    g.setAttribute('aPhase', new THREE.BufferAttribute(phases, 1));
-    const p = new THREE.Points(g, material);
-    p.frustumCulled = false;
-    return p;
-  }
+  const vs = compile(gl.VERTEX_SHADER, VERT);
+  const fs = compile(gl.FRAGMENT_SHADER, FRAG);
+  if (!vs || !fs) return;
 
-  /* ---------- soft glow texture (nebula + galaxy cores) ---------- */
-  function glowTexture() {
+  const prog = gl.createProgram();
+  gl.attachShader(prog, vs);
+  gl.attachShader(prog, fs);
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
+  gl.useProgram(prog);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, 'p');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  const U = {};
+  ['uTime', 'uScroll', 'uAspect', 'uLight', 'uMouse'].forEach((n) => { U[n] = gl.getUniformLocation(prog, n); });
+
+  gl.clearColor(0, 0, 0, 0);
+  gl.disable(gl.BLEND);
+
+  const isSmall = () => window.innerWidth < 768;
+  const isLight = () => root.getAttribute('data-theme') === 'light';
+
+  /* ---------- stars: two static canvases that twinkle out of phase (CSS) ---------- */
+  const starLayers = [0, 1].map((i) => {
     const c = document.createElement('canvas');
     c.className = 'stars2d stars2d-' + (i ? 'b' : 'a');
     c.setAttribute('aria-hidden', 'true');
@@ -147,36 +196,9 @@
       }
     });
   }
-  let nextShoot = 2.5;
-  function spawnShooter(m, halfW, halfH) {
-    const ang = Math.PI + 0.25 + Math.random() * 0.4; // heading down-left
-    m.userData.dx = Math.cos(ang); m.userData.dy = Math.sin(ang);
-    m.userData.life = 0; m.userData.dur = 0.9 + Math.random() * 0.5;
-    m.position.set((Math.random() * 1.2 - 0.1) * halfW * 1.4, camera.position.y + (Math.random() * 0.9 - 0.2) * halfH, -6);
-    m.rotation.z = ang;
-    m.visible = true;
-  }
-
-  /* ---------- theme ---------- */
-  function applyPalette() {
-    const light = isLight();
-    pointMaterials.forEach((m) => {
-      m.uniforms.uLight.value = light ? 1 : 0;
-      m.blending = light ? THREE.NormalBlending : THREE.AdditiveBlending;
-    });
-    nebulaSprites.forEach((s) => {
-      s.material.blending = light ? THREE.NormalBlending : THREE.AdditiveBlending;
-      s.material.opacity = light ? 0.2 : 0.26;
-    });
-    coreSprites.forEach((s) => {
-      s.material.blending = light ? THREE.NormalBlending : THREE.AdditiveBlending;
-      s.material.opacity = light ? 0.26 : 0.42;
-    });
-    ambient.intensity = light ? 0.9 : 0.45;
-    shooters.forEach((m) => { if (light) m.visible = false; });
-    if (reduce) renderOnce();
-  }
-  new MutationObserver(applyPalette).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+  drawStars();
+  let starTimer;
+  window.addEventListener('resize', () => { clearTimeout(starTimer); starTimer = setTimeout(drawStars, 250); });
 
   /* ---------- size ---------- */
   let lw = 0, lh = 0;
