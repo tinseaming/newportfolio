@@ -1,310 +1,216 @@
-/* Galaxy background (Three.js): spiral galaxies, twinkling stars, nebula clouds,
-   planets and shooting stars. Reacts to scroll + mouse. Falls back silently
-   if WebGL is not available. */
+/* Aurora background (plain WebGL, no libraries).
+   Flowing northern-light curtains + twinkling stars + drifting fireflies,
+   rendered by one fragment shader. Reacts to scroll and mouse.
+   Dark mode = night aurora. Light mode = soft sunrise aurora.
+   Falls back silently (CSS stars) if WebGL is not available. */
 (() => {
   'use strict';
 
   const canvas = document.getElementById('bg3d');
   const root = document.documentElement;
-  if (!canvas || !window.THREE) return;
-  const THREE = window.THREE;
+  if (!canvas) return;
 
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const lowPower = (navigator.hardwareConcurrency || 8) <= 2 || (navigator.deviceMemory || 8) <= 2;
   if (lowPower) return;
 
-  let renderer;
-  try {
-    renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: 'high-performance' });
-  } catch (e) {
-    return;
+  const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: 'high-performance' });
+  if (!gl) return;
+
+  const VERT = `
+    attribute vec2 p;
+    varying vec2 vUv;
+    void main() { vUv = p * 0.5 + 0.5; gl_Position = vec4(p, 0.0, 1.0); }`;
+
+  const FRAG = `
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+    precision highp float;
+    #else
+    precision mediump float;
+    #endif
+    varying vec2 vUv;
+    uniform float uTime, uScroll, uAspect, uLight;
+    uniform vec2 uMouse;
+
+    float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+    float noise(vec2 p) {
+      vec2 i = floor(p), f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+    }
+    float fbm(vec2 p) {
+      float v = 0.0, a = 0.5;
+      for (int i = 0; i < 4; i++) { v += a * noise(p); p = p * 2.03 + vec2(17.1, 9.3); a *= 0.5; }
+      return v;
+    }
+
+    /* colour along the height of a curtain: green -> cyan -> violet (night) / peach -> mint -> lavender (sunrise) */
+    vec3 pal(float t, float l) {
+      vec3 g = vec3(0.20, 0.95, 0.62), c = vec3(0.13, 0.82, 0.95), v = vec3(0.62, 0.45, 1.0);
+      vec3 night = mix(mix(g, c, smoothstep(0.0, 0.5, t)), v, smoothstep(0.45, 1.0, t));
+      vec3 pg = vec3(1.0, 0.70, 0.62), pc = vec3(0.50, 0.88, 0.82), pv = vec3(0.68, 0.60, 1.0);
+      vec3 day = mix(mix(pg, pc, smoothstep(0.0, 0.5, t)), pv, smoothstep(0.45, 1.0, t));
+      return mix(night, day, l);
+    }
+
+    /* one curtain: bright wavy lower edge, vertical rays fading upward */
+    float curtain(vec2 p, float t, float seed, float base, out float h) {
+      float wob = fbm(vec2(p.x * 1.5 + seed, t * 0.08 + seed * 1.7));
+      float b = base + (wob - 0.5) * 0.34 + 0.05 * sin(p.x * 2.2 + t * 0.15 + seed);
+      float d = p.y - b;
+      h = clamp(d * 2.4, 0.0, 1.0);
+      float lower = smoothstep(-0.012, 0.03, d);
+      float upper = exp(-max(d, 0.0) * 3.4);
+      float rays = noise(vec2(p.x * 26.0 + seed * 5.0, d * 3.0 - t * 0.22));
+      float rays2 = noise(vec2(p.x * 9.0 - seed, d * 1.2 - t * 0.12));
+      float r = 0.35 + 1.5 * rays * rays2;
+      float edge = exp(-abs(d) * 30.0) * 0.5;
+      return lower * (upper * r + edge);
+    }
+
+    void main() {
+      vec2 uv = vUv;
+      vec2 p = vec2(uv.x * uAspect, uv.y);
+      float t = uTime;
+      p.x += uMouse.x * 0.06;
+
+      vec3 aur = vec3(0.0);
+      float inten = 0.0;
+      for (int i = 0; i < 3; i++) {
+        float fi = float(i);
+        float base = 0.50 + fi * 0.12 + 0.07 * sin(uScroll * 5.5 + fi * 1.7) + uMouse.y * 0.02 - uScroll * 0.08;
+        float h;
+        float c = curtain(p + vec2(fi * 3.1, 0.0), t * (1.0 + fi * 0.25), fi * 7.3 + 1.0, base, h);
+        vec3 col = pal(h + 0.18 * fi - 0.2 + sin(uScroll * 3.0 + fi) * 0.12, uLight);
+        float w = c * (1.0 - fi * 0.18);
+        aur += col * w;
+        inten += w;
+      }
+      aur *= 0.46;
+      inten *= 0.46;
+
+      /* fireflies */
+      vec3 fire = vec3(0.0);
+      for (int i = 0; i < 9; i++) {
+        float fi = float(i);
+        float sped = 0.015 + hash(vec2(fi, 1.0)) * 0.03;
+        vec2 fp = vec2(hash(vec2(fi, 2.0)) * uAspect, fract(hash(vec2(fi, 3.0)) + t * sped - uScroll * 0.1));
+        fp.x += sin(t * 0.4 + fi * 2.3) * 0.05;
+        vec2 d = uv * vec2(uAspect, 1.0) - fp;
+        float glow = 0.0007 / (dot(d, d) + 0.0007);
+        float blink = 0.5 + 0.5 * sin(t * 1.2 + fi * 4.0);
+        fire += glow * blink * mix(vec3(0.45, 1.0, 0.85), vec3(0.75, 0.65, 1.0), hash(vec2(fi, 4.0)));
+      }
+      fire *= 0.22;
+
+      /* night: additive light on the page background (premultiplied) */
+      vec3 rgbN = aur + fire;
+      float aN = clamp(max(rgbN.r, max(rgbN.g, rgbN.b)), 0.0, 1.0);
+      rgbN = min(rgbN, vec3(aN));
+
+      /* day: soft pastel wash + a few glowing dots */
+      float aL = clamp(inten * 0.95, 0.0, 0.72);
+      vec3 colL = aur / max(inten, 0.001);
+      float spark = clamp((fire.g + fire.b) * 0.3, 0.0, 0.5);
+      vec3 rgbL = colL * aL + vec3(0.56, 0.5, 0.92) * spark;
+      float aL2 = clamp(aL + spark, 0.0, 0.8);
+
+      gl_FragColor = mix(vec4(rgbN, aN), vec4(rgbL, aL2), uLight);
+    }`;
+
+  function compile(type, src) {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, src);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+      console.warn('Aurora shader error:', gl.getShaderInfoLog(sh));
+      return null;
+    }
+    return sh;
   }
-  renderer.setClearColor(0x000000, 0);
+
+  const vs = compile(gl.VERTEX_SHADER, VERT);
+  const fs = compile(gl.FRAGMENT_SHADER, FRAG);
+  if (!vs || !fs) return;
+
+  const prog = gl.createProgram();
+  gl.attachShader(prog, vs);
+  gl.attachShader(prog, fs);
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
+  gl.useProgram(prog);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, 'p');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  const U = {};
+  ['uTime', 'uScroll', 'uAspect', 'uLight', 'uMouse'].forEach((n) => { U[n] = gl.getUniformLocation(prog, n); });
+
+  gl.clearColor(0, 0, 0, 0);
+  gl.disable(gl.BLEND);
 
   const isSmall = () => window.innerWidth < 768;
   const isLight = () => root.getAttribute('data-theme') === 'light';
-  const RANGE = 30; // how far the camera travels down the scene over the whole page
 
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 120);
-  camera.position.set(0, 0, 14);
-  scene.add(camera);
+  /* ---------- stars: two static canvases that twinkle out of phase (CSS) ---------- */
+  const starLayers = [0, 1].map((i) => {
+    const c = document.createElement('canvas');
+    c.className = 'stars2d stars2d-' + (i ? 'b' : 'a');
+    c.setAttribute('aria-hidden', 'true');
+    canvas.parentNode.insertBefore(c, canvas);
+    return c;
+  });
 
-  /* seeded random so the galaxy looks the same on every visit */
-  function rng(seed) {
-    let s = seed >>> 0;
-    return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
-  }
-
-  /* ---------- lights (follow the camera) ---------- */
-  const ambient = new THREE.AmbientLight(0xffffff, 0.45);
-  const sun = new THREE.PointLight(0xffc48a, 2.0, 80); sun.position.set(-9, 6, 6);
-  const fill = new THREE.PointLight(0x7a5cff, 1.4, 80); fill.position.set(9, -4, 4);
-  camera.add(ambient, sun, fill);
-
-  /* ---------- star-like points (shared shader: soft glow + twinkle) ---------- */
-  const VERT = `
-    attribute float aScale; attribute float aPhase; attribute vec3 aColor;
-    uniform float uTime; uniform float uSize; uniform float uTwinkle;
-    varying vec3 vColor; varying float vAlpha;
-    void main() {
-      vec4 mv = modelViewMatrix * vec4(position, 1.0);
-      gl_Position = projectionMatrix * mv;
-      float tw = 1.0 - uTwinkle * 0.55 + uTwinkle * 0.55 * sin(uTime * (0.7 + aPhase * 0.9) + aPhase * 40.0);
-      gl_PointSize = max(1.0, aScale * uSize * (60.0 / -mv.z) * (0.8 + 0.2 * tw));
-      vColor = aColor;
-      vAlpha = tw;
-    }`;
-  const FRAG = `
-    uniform float uLight; varying vec3 vColor; varying float vAlpha;
-    void main() {
-      float d = length(gl_PointCoord - 0.5);
-      if (d > 0.5) discard;
-      float a = pow(smoothstep(0.5, 0.0, d), 2.0) * vAlpha;
-      vec3 col = mix(vColor, vColor * vColor * 0.7, uLight);
-      gl_FragColor = vec4(col, a * 0.85);
-    }`;
-
-  const pointMaterials = [];
-  function makePointMaterial(sizeFactor, twinkle) {
-    const mat = new THREE.ShaderMaterial({
-      vertexShader: VERT,
-      fragmentShader: FRAG,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      uniforms: {
-        uTime: { value: 0 },
-        uSize: { value: sizeFactor },
-        uTwinkle: { value: twinkle },
-        uLight: { value: 0 }
+  function drawStars() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = window.innerWidth, h = Math.round(window.innerHeight * 1.1);
+    const palette = ['255,255,255', '255,255,255', '200,235,255', '210,255,240', '230,215,255'];
+    let seed = 7;
+    const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    const count = Math.min(220, Math.round((w * h) / 7500));
+    starLayers.forEach((c) => {
+      c.width = Math.round(w * dpr);
+      c.height = Math.round(h * dpr);
+      const x = c.getContext('2d');
+      x.scale(dpr, dpr);
+      for (let i = 0; i < count / 2; i++) {
+        const px = rnd() * w, py = rnd() * h;
+        const big = rnd() > 0.93;
+        const r = big ? 1.1 + rnd() * 0.9 : 0.4 + rnd() * 0.8;
+        const col = palette[Math.floor(rnd() * palette.length)];
+        if (big) {
+          const g = x.createRadialGradient(px, py, 0, px, py, r * 6);
+          g.addColorStop(0, `rgba(${col},0.55)`);
+          g.addColorStop(1, `rgba(${col},0)`);
+          x.fillStyle = g;
+          x.fillRect(px - r * 6, py - r * 6, r * 12, r * 12);
+        }
+        x.fillStyle = `rgba(${col},${0.55 + rnd() * 0.45})`;
+        x.beginPath();
+        x.arc(px, py, r, 0, Math.PI * 2);
+        x.fill();
       }
     });
-    mat.userData.sizeFactor = sizeFactor;
-    pointMaterials.push(mat);
-    return mat;
   }
+  drawStars();
+  let starTimer;
+  window.addEventListener('resize', () => { clearTimeout(starTimer); starTimer = setTimeout(drawStars, 250); });
 
-  function buildPoints(positions, colors, scales, phases, material) {
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    g.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
-    g.setAttribute('aScale', new THREE.BufferAttribute(scales, 1));
-    g.setAttribute('aPhase', new THREE.BufferAttribute(phases, 1));
-    const p = new THREE.Points(g, material);
-    p.frustumCulled = false;
-    return p;
-  }
-
-  /* ---------- soft glow texture (nebula + galaxy cores) ---------- */
-  function glowTexture() {
-    const c = document.createElement('canvas');
-    c.width = c.height = 128;
-    const x = c.getContext('2d');
-    const g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
-    g.addColorStop(0, 'rgba(255,255,255,1)');
-    g.addColorStop(0.35, 'rgba(255,255,255,0.45)');
-    g.addColorStop(1, 'rgba(255,255,255,0)');
-    x.fillStyle = g; x.fillRect(0, 0, 128, 128);
-    return new THREE.CanvasTexture(c);
-  }
-  const glowTex = glowTexture();
-
-  /* ---------- spiral galaxy ---------- */
-  function makeGalaxy(o) {
-    const rand = rng(o.seed);
-    const n = o.count;
-    const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), scl = new Float32Array(n), ph = new Float32Array(n);
-    const cIn = new THREE.Color(o.inside), cMid = new THREE.Color(o.mid), cOut = new THREE.Color(o.outside), c = new THREE.Color();
-    for (let i = 0; i < n; i++) {
-      const r = Math.pow(rand(), 1.25) * o.radius;
-      const branch = ((i % o.branches) / o.branches) * Math.PI * 2;
-      const angle = branch + r * o.spin;
-      const spread = () => Math.pow(rand(), 3) * (rand() < 0.5 ? 1 : -1) * o.randomness * (0.25 + r);
-      pos[i * 3]     = Math.cos(angle) * r + spread();
-      pos[i * 3 + 1] = spread() * 0.45;
-      pos[i * 3 + 2] = Math.sin(angle) * r + spread();
-      const t = r / o.radius;
-      if (t < 0.4) c.lerpColors(cIn, cMid, t / 0.4); else c.lerpColors(cMid, cOut, (t - 0.4) / 0.6);
-      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
-      scl[i] = 0.35 + Math.pow(rand(), 3) * 1.5;
-      ph[i] = rand();
-    }
-    const g = buildPoints(pos, col, scl, ph, makePointMaterial(1.25, 0.35));
-    return g;
-  }
-
-  const galaxyCount = isSmall() ? 12000 : 36000;
-  const galaxyA = new THREE.Group();
-  galaxyA.add(makeGalaxy({ seed: 11, count: galaxyCount, radius: 13, branches: 4, spin: 0.95, randomness: 0.55, inside: 0xffe2b8, mid: 0xff5fa8, outside: 0x4f7bff }));
-  const galaxyB = new THREE.Group();
-  galaxyB.add(makeGalaxy({ seed: 29, count: Math.round(galaxyCount * 0.8), radius: 11, branches: 3, spin: 1.2, randomness: 0.5, inside: 0xfff0c8, mid: 0xb46bff, outside: 0x2fd3ff }));
-  const coreSprites = [];
-  [[galaxyA, 0xffd9a8, 9], [galaxyB, 0xe2b8ff, 7.5]].forEach(([grp, color, size]) => {
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.6 }));
-    sp.scale.set(size, size, 1);
-    grp.add(sp);
-    coreSprites.push(sp);
-  });
-  scene.add(galaxyA, galaxyB);
-
-  /* ---------- star field ---------- */
-  const STAR_COLORS = [0xffffff, 0xffffff, 0xcfe0ff, 0xaec8ff, 0xfff0d0, 0xffd6ec].map((h) => new THREE.Color(h));
-  function makeStars(count, seed, scaleMin, scaleMax, twinkle, size) {
-    const rand = rng(seed);
-    const pos = new Float32Array(count * 3), col = new Float32Array(count * 3), scl = new Float32Array(count), ph = new Float32Array(count);
-    for (let i = 0; i < count; i++) {
-      pos[i * 3]     = (rand() - 0.5) * 70;
-      pos[i * 3 + 1] = 14 - rand() * 40;
-      pos[i * 3 + 2] = -34 + rand() * 40;
-      const c = STAR_COLORS[Math.floor(rand() * STAR_COLORS.length)];
-      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
-      scl[i] = scaleMin + rand() * (scaleMax - scaleMin);
-      ph[i] = rand();
-    }
-    return buildPoints(pos, col, scl, ph, makePointMaterial(size, twinkle));
-  }
-  const stars = new THREE.Group();
-  stars.add(makeStars(isSmall() ? 1200 : 3400, 5, 0.4, 1.3, 0.7, 1.0));
-  stars.add(makeStars(isSmall() ? 50 : 150, 77, 2.2, 4.2, 1.0, 1.0)); // a few bright, strongly twinkling stars
-  scene.add(stars);
-
-  /* ---------- nebula clouds ---------- */
-  const nebula = new THREE.Group();
-  const nebulaSprites = [];
-  [
-    [-9, 3, 0x6d3cff, 34], [10, -5, 0xff3d9a, 30], [-7, -15, 0x2d7bff, 32],
-    [9, -23, 0xb46bff, 34], [-4, -30, 0x00c2c7, 30]
-  ].forEach(([x, y, color, size]) => {
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.3 }));
-    s.position.set(x, y, -22);
-    s.scale.set(size, size, 1);
-    nebula.add(s);
-    nebulaSprites.push(s);
-  });
-  scene.add(nebula);
-
-  /* ---------- planets + asteroids ---------- */
-  const bodies = [];
-  const planetMats = [];
-  function addPlanet(o) {
-    const group = new THREE.Group();
-    const mat = new THREE.MeshStandardMaterial({ color: o.color, roughness: 0.55, metalness: 0.1, emissive: o.color, emissiveIntensity: 0.12 });
-    planetMats.push(mat);
-    group.add(new THREE.Mesh(new THREE.SphereGeometry(o.r, 40, 40), mat));
-    if (o.ring) {
-      const ring = new THREE.Mesh(
-        new THREE.RingGeometry(o.r * 1.45, o.r * 2.2, 80),
-        new THREE.MeshBasicMaterial({ color: o.ring, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })
-      );
-      ring.rotation.x = Math.PI / 2 - 0.35;
-      group.add(ring);
-    }
-    group.userData = { side: o.side, v: o.v, z: o.z, phase: o.v * 9, depth: 0.3, spin: o.spin || 0.15, tilt: o.tilt || 0.3, scale: 1 };
-    group.rotation.z = group.userData.tilt;
-    scene.add(group);
-    bodies.push(group);
-    return group;
-  }
-  const p1 = addPlanet({ r: 1.0, color: 0x7a5cff, ring: 0xffd6a5, side: 1,  v: -0.06, z: -3, spin: 0.12, tilt: 0.35 });
-  const p2 = addPlanet({ r: 0.75, color: 0x2fc9d6, side: -1, v: 0.46, z: -2, spin: 0.2 });
-  addPlanet({ r: 1.3, color: 0xff7a4a, ring: 0xffe3c2, side: 1, v: 0.8, z: -5, spin: 0.1, tilt: -0.3 });
-  // small moon orbiting planet 2
-  const moon = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 20), new THREE.MeshStandardMaterial({ color: 0xd9dbe4, roughness: 0.9 }));
-  p2.add(moon);
-
-  const rockRand = rng(3);
-  [[-1, 0.3, -1], [1, 0.36, 0], [-1, 0.62, -2], [1, 0.93, -1]].forEach(([side, v, z], i) => {
-    const geo = new THREE.IcosahedronGeometry(0.5 + (i % 2) * 0.12, 1);
-    const p = geo.attributes.position;
-    for (let k = 0; k < p.count; k++) {
-      const f = 0.8 + rockRand() * 0.45;
-      p.setXYZ(k, p.getX(k) * f, p.getY(k) * f, p.getZ(k) * f);
-    }
-    geo.computeVertexNormals();
-    const rock = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x6f6b80, roughness: 0.95, flatShading: true }));
-    rock.userData = { side, v, z, phase: i * 2.3, depth: 0.5, spin: 0.35 + i * 0.07, tilt: 0, scale: 1, rock: true };
-    rock.rotation.set(i, i * 1.7, 0);
-    scene.add(rock);
-    bodies.push(rock);
-  });
-
-  /* ---------- shooting stars ---------- */
-  const shooters = [];
-  const SHOOT_VERT = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }';
-  const SHOOT_FRAG = `varying vec2 vUv; uniform float uOpacity;
-    void main(){ float along = pow(vUv.x, 2.5); float across = pow(1.0 - abs(vUv.y - 0.5) * 2.0, 1.5);
-      gl_FragColor = vec4(vec3(0.85, 0.93, 1.0), along * across * uOpacity); }`;
-  for (let i = 0; i < 2; i++) {
-    const mat = new THREE.ShaderMaterial({ vertexShader: SHOOT_VERT, fragmentShader: SHOOT_FRAG, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { uOpacity: { value: 0 } } });
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
-    m.scale.set(4.5, 0.07, 1);
-    m.visible = false;
-    m.userData = { life: 0, dur: 1, dx: -1, dy: -0.5 };
-    scene.add(m);
-    shooters.push(m);
-  }
-  let nextShoot = 2.5;
-  function spawnShooter(m, halfW, halfH) {
-    const ang = Math.PI + 0.25 + Math.random() * 0.4; // heading down-left
-    m.userData.dx = Math.cos(ang); m.userData.dy = Math.sin(ang);
-    m.userData.life = 0; m.userData.dur = 0.9 + Math.random() * 0.5;
-    m.position.set((Math.random() * 1.2 - 0.1) * halfW * 1.4, camera.position.y + (Math.random() * 0.9 - 0.2) * halfH, -6);
-    m.rotation.z = ang;
-    m.visible = true;
-  }
-
-  /* ---------- theme ---------- */
-  function applyPalette() {
-    const light = isLight();
-    pointMaterials.forEach((m) => {
-      m.uniforms.uLight.value = light ? 1 : 0;
-      m.blending = light ? THREE.NormalBlending : THREE.AdditiveBlending;
-    });
-    nebulaSprites.forEach((s) => {
-      s.material.blending = light ? THREE.NormalBlending : THREE.AdditiveBlending;
-      s.material.opacity = light ? 0.2 : 0.26;
-    });
-    coreSprites.forEach((s) => {
-      s.material.blending = light ? THREE.NormalBlending : THREE.AdditiveBlending;
-      s.material.opacity = light ? 0.26 : 0.42;
-    });
-    ambient.intensity = light ? 0.9 : 0.45;
-    shooters.forEach((m) => { if (light) m.visible = false; });
-    if (reduce) renderOnce();
-  }
-  new MutationObserver(applyPalette).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
-
-  /* ---------- size / layout ---------- */
-  let lw = 0, lh = 0, halfW = 10, halfH = 6;
-  function layout() {
-    const dist = camera.position.z;
-    halfH = Math.tan((camera.fov * Math.PI) / 360) * dist;
-    halfW = halfH * camera.aspect;
-    const small = isSmall();
-    bodies.forEach((b) => {
-      const u = b.userData;
-      u.baseX = u.side * halfW * (small ? 0.76 : 0.8);
-      u.baseY = -u.v * RANGE + 1.2;
-      u.scale = small ? 0.6 : 1;
-      b.scale.setScalar(u.scale);
-    });
-    const gs = small ? 0.62 : 1;
-    galaxyA.scale.setScalar(gs);
-    galaxyB.scale.setScalar(gs);
-  }
-
+  /* ---------- size ---------- */
+  let lw = 0, lh = 0;
   function resize() {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     if (!w || !h || (w === lw && h === lh)) return;
     lw = w; lh = h;
-    const dpr = Math.min(window.devicePixelRatio || 1, isSmall() ? 1.5 : 2);
-    renderer.setPixelRatio(dpr);
-    renderer.setSize(w, h, false);
-    pointMaterials.forEach((m) => { m.uniforms.uSize.value = m.userData.sizeFactor * dpr; });
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    layout();
+    const scale = isSmall() ? 0.6 : 0.5; // the aurora is soft, so half resolution looks identical and is far cheaper
+    canvas.width = Math.max(2, Math.round(w * scale));
+    canvas.height = Math.max(2, Math.round(h * scale));
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.uniform1f(U.uAspect, w / h);
     if (reduce) renderOnce();
   }
   let resizeTimer;
@@ -321,80 +227,26 @@
     const max = document.documentElement.scrollHeight - window.innerHeight;
     return max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
   };
+  window.addEventListener('scroll', () => root.style.setProperty('--sy', scrollProgress().toFixed(3)), { passive: true });
 
-  /* ---------- animation ---------- */
-  let sp = scrollProgress(), lastSp = sp, boost = 0;
+  /* ---------- state ---------- */
+  let sp = scrollProgress();
+  let light = isLight() ? 1 : 0;
 
-  function update(dt, t) {
-    const target = scrollProgress();
-    sp += (target - sp) * Math.min(1, dt * 5);
-    mx += (tmx - mx) * Math.min(1, dt * 3);
-    my += (tmy - my) * Math.min(1, dt * 3);
-
-    const speed = Math.abs(sp - lastSp) / Math.max(dt, 0.001);
-    lastSp = sp;
-    boost += (Math.min(speed * 18, 3) - boost) * Math.min(1, dt * 4);
-
-    camera.position.y = -sp * RANGE;
-    camera.position.x = mx * 0.8;
-    camera.position.z = 14 + Math.sin(sp * Math.PI * 3) * 1.0;
-    camera.lookAt(mx * 0.3, camera.position.y + my * 0.3, 0);
-
-    pointMaterials.forEach((m) => { m.uniforms.uTime.value = t; });
-
-    // galaxies: slow spin, speeds up while scrolling; tilt changes with scroll
-    galaxyA.position.set(halfW * 0.12 + mx * 0.6, -2 + camera.position.y * 0.55, -10);
-    galaxyA.rotation.x = 1.05 - sp * 0.5 + my * 0.05;
-    galaxyA.rotation.z = -0.35 + mx * 0.05;
-    galaxyA.rotation.y += dt * (0.03 + boost * 0.05);
-
-    galaxyB.position.set(-halfW * 0.25 - mx * 0.5, -19, -11);
-    galaxyB.rotation.x = 0.7 + sp * 0.4;
-    galaxyB.rotation.z = 0.5;
-    galaxyB.rotation.y -= dt * (0.025 + boost * 0.05);
-
-    stars.position.y = camera.position.y * 0.7;
-    stars.rotation.y = t * 0.004 + mx * 0.02;
-    nebula.position.y = camera.position.y * 0.82;
-    nebula.position.x = mx * 0.8;
-
-    bodies.forEach((b) => {
-      const u = b.userData;
-      b.position.x = u.baseX + mx * u.depth * 1.6 + Math.sin(t * 0.35 + u.phase) * 0.25;
-      b.position.y = u.baseY + Math.sin(t * 0.55 + u.phase) * 0.35;
-      b.position.z = u.z;
-      const k = dt * u.spin * (1 + boost * 1.4);
-      if (u.rock) { b.rotation.x += k; b.rotation.y += k * 1.3; }
-      else { b.rotation.y += k; }
-    });
-    moon.position.set(Math.cos(t * 0.9) * 1.5, Math.sin(t * 0.9) * 0.25, Math.sin(t * 0.9) * 1.5);
-
-    // shooting stars (dark mode only)
-    if (!reduce && !isLight()) {
-      nextShoot -= dt;
-      if (nextShoot <= 0) {
-        const free = shooters.find((m) => !m.visible);
-        if (free) spawnShooter(free, halfW, halfH);
-        nextShoot = 3 + Math.random() * 4;
-      }
-      shooters.forEach((m) => {
-        if (!m.visible) return;
-        const u = m.userData;
-        u.life += dt;
-        const k = u.life / u.dur;
-        if (k >= 1) { m.visible = false; return; }
-        m.position.x += u.dx * dt * 14;
-        m.position.y += u.dy * dt * 14;
-        m.material.uniforms.uOpacity.value = Math.sin(k * Math.PI) * 0.95;
-      });
-    }
+  function draw(t) {
+    gl.uniform1f(U.uTime, t);
+    gl.uniform1f(U.uScroll, sp);
+    gl.uniform1f(U.uLight, light);
+    gl.uniform2f(U.uMouse, mx, my);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
   function renderOnce() {
     resize();
-    sp = lastSp = scrollProgress();
-    update(0.016, 3);
-    renderer.render(scene, camera);
+    sp = scrollProgress();
+    light = isLight() ? 1 : 0;
+    draw(6.0);
   }
 
   let last = performance.now(), raf = 0, ready = false;
@@ -404,8 +256,14 @@
     if (isSmall() && now - last < 28) return; // ~35 fps on phones
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
-    update(dt, now / 1000);
-    renderer.render(scene, camera);
+
+    // smooth follow of scroll, mouse and theme (the aurora cross-fades between night and sunrise)
+    sp += (scrollProgress() - sp) * (1 - Math.exp(-dt * 4));
+    mx += (tmx - mx) * (1 - Math.exp(-dt * 2.5));
+    my += (tmy - my) * (1 - Math.exp(-dt * 2.5));
+    light += ((isLight() ? 1 : 0) - light) * (1 - Math.exp(-dt * 3));
+
+    draw(now / 1000);
     if (!ready) { ready = true; root.classList.add('scene-ready'); }
   }
 
@@ -415,10 +273,10 @@
     root.classList.remove('scene-ready');
   });
 
+  if (reduce) new MutationObserver(renderOnce).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+
   /* ---------- go ---------- */
-  if (reduce) pointMaterials.forEach((m) => { m.uniforms.uTwinkle.value = 0; });
   resize();
-  applyPalette();
   if (reduce) {
     renderOnce();
     root.classList.add('scene-ready');
